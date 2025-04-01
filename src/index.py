@@ -213,7 +213,7 @@ class SLRParser:
         st.write(goto_table_df)
 
     def parse_string(self, input_string):
-        for terminal in sorted(self.terminals, key=len, reverse=True):  # Corrected key.len to key=len
+        for terminal in sorted(self.terminals, key=len, reverse=True):  
             input_string = input_string.replace(terminal, f" {terminal} ")
 
         input_string = input_string.split()
