@@ -1,6 +1,6 @@
-# SLR Parser
+# Compiler Design Project
 
-A Python-based SLR (Simple LR) parser application built with Streamlit that performs grammar analysis for compiler design.
+This project implements an SLR parser using Python and Streamlit. The application allows users to input a grammar, compute FIRST and FOLLOW sets, and parse strings based on the grammar.
 
 ## Overview
 
@@ -10,14 +10,18 @@ This application takes a context-free grammar as input and performs the followin
 - Generates ACTION and GOTO tables for SLR parsing
 - Presents the results in an interactive web interface
 
+## Deployment
+
+The application is deployed and accessible at the following link:
+
+[SLR Parser Application](https://tony499370-compiler-design-project-srcindex-2oo1n6.streamlit.app/)
+
 ## Features
 
-- Grammar validation and parsing
-- Automatic grammar augmentation
-- FIRST and FOLLOW set computation
-- LR(0) item generation
-- SLR parsing table construction
-- Interactive UI for input and result visualization
+- Input grammar in the format: `E -> E+T | T ; T -> T*F | F ; F -> (E) | id`
+- Compute FIRST and FOLLOW sets for the grammar.
+- Display ACTION and GOTO tables.
+- Parse input strings based on the grammar and display parsing steps.
 
 ## Installation
 
@@ -57,6 +61,12 @@ This application takes a context-free grammar as input and performs the followin
 
 4. Click the "Compute FIRST, FOLLOW & Parsing Table" button to see the results
 
+## How to Use
+
+1. Enter the grammar in the specified format.
+2. Enter the string to parse.
+3. Click the "Compute FIRST, FOLLOW & Parsing Table" button to see the results.
+
 ## Example
 
 For the grammar:
@@ -80,6 +90,7 @@ The parser implements the SLR parsing algorithm which involves:
 
 ## Requirements
 
-- streamlit
-- pandas
+- Python 3.x
+- Streamlit
+- Pandas
 - collections (Python standard library)

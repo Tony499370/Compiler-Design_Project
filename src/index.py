@@ -29,23 +29,23 @@ class SLRParser:
     def parse_grammar(self, raw_grammar):
         grammar = defaultdict(list)
 
-        for rule in raw_grammar.split(";"):
+        for rule in raw_grammar.split(';'):
             rule = rule.strip()
             if not rule:
                 continue
 
-            if "->" not in rule:
+            if '->' not in rule:
                 st.error(f"Invalid rule format (missing '->') in: {rule}")
                 return None
 
-            lhs, rhs = rule.split("->", 1)
+            lhs, rhs = rule.split('->', 1)
             lhs, rhs = lhs.strip(), rhs.strip()
 
             if not lhs or not rhs:
                 st.error(f"Invalid rule with empty LHS or RHS in: {rule}")
                 return None
 
-            grammar[lhs] = [p.strip() for p in rhs.split("|")]
+            grammar[lhs] = [p.strip() for p in rhs.split('|')]
 
         if not grammar:
             st.error("No valid grammar rules found.")
@@ -68,18 +68,18 @@ class SLRParser:
                     else:
                         self.terminals.add(symbol)
 
-        self.terminals.add("$")
+        self.terminals.add('$')
 
     def compute_first_sets(self):
         def first(symbol):
             if symbol in self.terminals:
                 return {symbol}
-            if self.first[symbol]:
+            if self.first[symbol]:  
                 return self.first[symbol]
 
             result = set()
             for production in self.grammar[symbol]:
-                if production == "":
+                if production == "":  
                     result.add("ε")
                 else:
                     for sym in production.split():
@@ -144,16 +144,10 @@ class SLRParser:
             new_items = set()
             for lhs, before_dot, after_dot in state:
                 if after_dot and after_dot[0] == symbol:
-                    new_items.add(
-                        (lhs, before_dot + " " + after_dot[0], tuple(after_dot[1:]))
-                    )
+                    new_items.add((lhs, before_dot + " " + after_dot[0], tuple(after_dot[1:])))
             return closure(new_items)
 
-        initial_item = (
-            self.start_symbol,
-            "",
-            tuple(self.grammar[self.start_symbol][0].split()),
-        )
+        initial_item = (self.start_symbol, "", tuple(self.grammar[self.start_symbol][0].split()))
         start_state = closure({initial_item})
         self.states.append(start_state)
 
@@ -188,35 +182,26 @@ class SLRParser:
                 lhs, before_dot, after_dot = item
 
                 if lhs == self.start_symbol and not after_dot:
-                    self.action_table[state_index]["$"] = ("ACCEPT",)
+                    self.action_table[state_index]['$'] = ("ACCEPT",)
                 elif after_dot:
                     next_symbol = after_dot[0]
                     if next_symbol in self.terminals:
                         next_state = self.goto_table[state_index].get(next_symbol)
                         if next_state is not None:
-                            self.action_table[state_index][next_symbol] = (
-                                "SHIFT",
-                                next_state,
-                            )
+                            self.action_table[state_index][next_symbol] = ("SHIFT", next_state)
                 else:
                     for terminal in self.follow[lhs]:
                         self.action_table[state_index][terminal] = ("REDUCE", lhs)
 
     def display_parsing_table(self):
         action_table_str = {
-            state: {
-                symbol: " ".join(map(str, action)) if action else ""
-                for symbol, action in actions.items()
-            }
+            state: {symbol: " ".join(map(str, action)) if action else "" for symbol, action in actions.items()}
             for state, actions in self.action_table.items()
         }
         action_table_df = pd.DataFrame(action_table_str).fillna("")
 
         goto_table_str = {
-            state: {
-                symbol: str(target) if target is not None else ""
-                for symbol, target in transitions.items()
-            }
+            state: {symbol: str(target) if target is not None else "" for symbol, target in transitions.items()}
             for state, transitions in self.goto_table.items()
         }
         goto_table_df = pd.DataFrame(goto_table_str).fillna("")
@@ -227,11 +212,73 @@ class SLRParser:
         st.subheader("GOTO Table")
         st.write(goto_table_df)
 
+    def parse_string(self, input_string):
+        for terminal in sorted(self.terminals, key=len, reverse=True):  # Corrected key.len to key=len
+            input_string = input_string.replace(terminal, f" {terminal} ")
+
+        input_string = input_string.split()
+        input_string.append("$")
+
+        stack = [0]
+        pointer = 0
+
+        st.write("### Parsing Steps")
+        st.write(f"Initial Stack: {stack}, Input: {' '.join(input_string)}")
+
+        while True:
+            current_state = stack[-1]
+            current_symbol = input_string[pointer]
+
+            action = self.action_table.get(current_state, {}).get(current_symbol)
+
+            if not action:
+                st.write(f"DEBUG: Current Stack: {stack}")
+                st.write(f"DEBUG: Current Input: {' '.join(input_string[pointer:])}")
+                return f"Error: Unexpected symbol '{current_symbol}' at position {pointer}."
+
+            if action[0] == "SHIFT":
+                stack.append(current_symbol)
+                stack.append(action[1])
+                pointer += 1
+                st.write(f"SHIFT: Stack: {stack}, Input: {' '.join(input_string[pointer:])}")
+            elif action[0] == "REDUCE":
+                lhs = action[1]
+                rhs = self.grammar[lhs][0]
+
+                if rhs == "ε":
+                    rhs_length = 0
+                else:
+                    rhs_length = len(rhs.split())
+
+                if len(stack) < rhs_length * 2:
+                    st.write(f"DEBUG: Current Stack: {stack}")
+                    st.write(f"DEBUG: Current Input: {' '.join(input_string[pointer:])}")
+                    return f"Error: Stack underflow during REDUCE operation for production {lhs} → {rhs}."
+
+                for _ in range(rhs_length * 2):
+                    stack.pop()
+
+                stack.append(lhs)
+                goto_state = self.goto_table[stack[-2]].get(lhs)
+                if goto_state is None:
+                    st.write(f"DEBUG: Current Stack: {stack}")
+                    st.write(f"DEBUG: Current Input: {' '.join(input_string[pointer:])}")
+                    return f"Error: No GOTO state for symbol '{lhs}'."
+                stack.append(goto_state)
+                st.write(f"REDUCE: Stack: {stack}, Input: {' '.join(input_string[pointer:])}")
+            elif action[0] == "ACCEPT":
+                return "The string is successfully parsed and is valid!"
+            else:
+                st.write(f"DEBUG: Current Stack: {stack}")
+                st.write(f"DEBUG: Current Input: {' '.join(input_string[pointer:])}")
+                return f"Error: Invalid action '{action}' encountered."
 
 st.title("SLR Parser")
-st.write("Enter grammar in the format: E -> E + T | T ; T -> T * F | F ; F -> ( E ) | id")
+st.write("Enter grammar in the format: E -> E+T | T ; T -> T*F | F ; F -> (E) | id")
 
 grammar_input = st.text_area("Enter Grammar:")
+input_string = st.text_input("Enter String to Parse:")
+
 if st.button("Compute FIRST, FOLLOW & Parsing Table"):
     if grammar_input:
         try:
@@ -245,5 +292,11 @@ if st.button("Compute FIRST, FOLLOW & Parsing Table"):
                 st.write(f"FOLLOW({nt}) = {follow_set}")
 
             parser.display_parsing_table()
+
+            if input_string:
+                st.subheader("String Parsing")
+                result = parser.parse_string(input_string)
+                st.write(result)
+
         except ValueError as e:
             st.error(str(e))
